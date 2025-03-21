@@ -9,16 +9,16 @@ import (
 	"github.com/spf13/viper"
 	"go.uber.org/automaxprocs/maxprocs"
 
-	"github.com/toozej/golang-starter/internal/starter"
-	"github.com/toozej/golang-starter/pkg/config"
-	"github.com/toozej/golang-starter/pkg/man"
-	"github.com/toozej/golang-starter/pkg/version"
+	"github.com/toozej/go-find-liquor/internal/starter"
+	"github.com/toozej/go-find-liquor/pkg/config"
+	"github.com/toozej/go-find-liquor/pkg/man"
+	"github.com/toozej/go-find-liquor/pkg/version"
 )
 
 var conf config.Config
 
 var rootCmd = &cobra.Command{
-	Use:              "golang-starter",
+	Use:              "go-find-liquor",
 	Short:            "golang starter examples",
 	Long:             `Golang starter template using cobra and viper modules`,
 	Args:             cobra.ExactArgs(0),

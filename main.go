@@ -1,6 +1,6 @@
 package main
 
-import cmd "github.com/toozej/golang-starter/cmd/golang-starter"
+import cmd "github.com/toozej/go-find-liquor/cmd/go-find-liquor"
 
 func main() {
 	cmd.Execute()

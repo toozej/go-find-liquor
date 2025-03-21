@@ -1,4 +1,4 @@
-module github.com/toozej/golang-starter
+module github.com/toozej/go-find-liquor
 
 go 1.24
 

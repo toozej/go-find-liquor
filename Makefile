@@ -41,22 +41,22 @@ local-release-verify: local-release local-sign local-verify ## Release and verif
 pre-reqs: pre-commit-install ## Install pre-commit hooks and necessary binaries
 
 vet: ## Run `go vet` in Docker
-	docker build --target vet -f $(CURDIR)/Dockerfile -t toozej/golang-starter:latest . 
+	docker build --target vet -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest . 
 
 test: ## Run `go test` in Docker
-	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t toozej/golang-starter:latest . 
+	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest . 
 
 build: ## Build Docker image, including running tests
-	docker build -f $(CURDIR)/Dockerfile -t toozej/golang-starter:latest .
+	docker build -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest .
 
-get-cosign-pub-key: ## Get golang-starter Cosign public key from GitHub
-	test -f $(CURDIR)/golang-starter.pub || curl --silent https://raw.githubusercontent.com/toozej/golang-starter/main/golang-starter.pub -O
+get-cosign-pub-key: ## Get go-find-liquor Cosign public key from GitHub
+	test -f $(CURDIR)/go-find-liquor.pub || curl --silent https://raw.githubusercontent.com/toozej/go-find-liquor/main/go-find-liquor.pub -O
 
 verify: get-cosign-pub-key ## Verify Docker image with Cosign
-	cosign verify --key $(CURDIR)/golang-starter.pub toozej/golang-starter:latest
+	cosign verify --key $(CURDIR)/go-find-liquor.pub toozej/go-find-liquor:latest
 
 run: ## Run built Docker image
-	docker run --rm --name golang-starter --env-file $(CURDIR)/.env toozej/golang-starter:latest
+	docker run --rm --name go-find-liquor --env-file $(CURDIR)/.env toozej/go-find-liquor:latest
 
 up: test build ## Run Docker Compose project with build Docker image
 	docker compose -f docker-compose.yml down --remove-orphans
@@ -67,21 +67,21 @@ down: ## Stop running Docker Compose project
 	docker compose -f docker-compose.yml down --remove-orphans
 
 distroless-build: ## Build Docker image using distroless as final base
-	docker build -f $(CURDIR)/Dockerfile.distroless -t toozej/golang-starter:distroless . 
+	docker build -f $(CURDIR)/Dockerfile.distroless -t toozej/go-find-liquor:distroless . 
 
 distroless-run: ## Run built Docker image using distroless as final base
-	docker run --rm --name golang-starter -v $(CURDIR)/config:/config toozej/golang-starter:distroless
+	docker run --rm --name go-find-liquor -v $(CURDIR)/config:/config toozej/go-find-liquor:distroless
 
-install: ## Install golang-starter from latest GitHub release
+install: ## Install go-find-liquor from latest GitHub release
 	if command -v go; then \
-			go install github.com/toozej/golang-starter@latest ; \
+			go install github.com/toozej/go-find-liquor@latest ; \
 	else \
-			echo "Downloading golang-starter binary for $(OS)-$(ARCH)..."; \
+			echo "Downloading go-find-liquor binary for $(OS)-$(ARCH)..."; \
 			mkdir -p $(CURDIR)/tmp; \
-			curl --silent -L -o $(CURDIR)/tmp/golang-starter.tgz $(LATEST_RELEASE_URL); \
-			tar -xzf $(CURDIR)/tmp/golang-starter.tgz -C $(CURDIR)/tmp/; \
-			chmod +x $(CURDIR)/tmp/golang-starter; \
-			sudo mv $(CURDIR)/tmp/golang-starter /usr/local/bin/golang-starter; \
+			curl --silent -L -o $(CURDIR)/tmp/go-find-liquor.tgz $(LATEST_RELEASE_URL); \
+			tar -xzf $(CURDIR)/tmp/go-find-liquor.tgz -C $(CURDIR)/tmp/; \
+			chmod +x $(CURDIR)/tmp/go-find-liquor; \
+			sudo mv $(CURDIR)/tmp/go-find-liquor /usr/local/bin/go-find-liquor; \
 			rm -rf $(CURDIR)/tmp; \
 	fi
 
@@ -108,13 +108,13 @@ local-build: ## Run `go build` using locally installed golang toolchain
 
 local-run: ## Run locally built binary
 	if test -e $(CURDIR)/.env; then \
-		export `cat $(CURDIR)/.env | xargs` && $(CURDIR)/out/golang-starter; \
+		export `cat $(CURDIR)/.env | xargs` && $(CURDIR)/out/go-find-liquor; \
 	else \
 		echo "No environment variables found at $(CURDIR)/.env. Cannot run."; \
 	fi
 
 local-kill: ## Kill any currently running locally built binary
-	-pkill -f '$(CURDIR)/out/golang-starter'
+	-pkill -f '$(CURDIR)/out/go-find-liquor'
 
 local-iterate: ## Run `make local-build local-run` via `air` any time a .go or .tmpl file changes
 	air -c $(CURDIR)/.air.toml
@@ -124,33 +124,33 @@ local-release-test: ## Build assets and test goreleaser config using locally ins
 	goreleaser build --rm-dist --snapshot
 
 local-release: local-test docker-login ## Release assets using locally installed golang toolchain and goreleaser
-	if test -e $(CURDIR)/golang-starter.key && test -e $(CURDIR)/.env; then \
+	if test -e $(CURDIR)/go-find-liquor.key && test -e $(CURDIR)/.env; then \
 		export `cat $(CURDIR)/.env | xargs` && goreleaser release --rm-dist; \
 	else \
-		echo "no cosign private key found at $(CURDIR)/golang-starter.key. Cannot release."; \
+		echo "no cosign private key found at $(CURDIR)/go-find-liquor.key. Cannot release."; \
 	fi
 
 local-sign: local-test ## Sign locally installed golang toolchain and cosign
-	if test -e $(CURDIR)/golang-starter.key && test -e $(CURDIR)/.env; then \
-		export `cat $(CURDIR)/.env | xargs` && cosign sign-blob --key=$(CURDIR)/golang-starter.key --output-signature=$(CURDIR)/golang-starter.sig $(CURDIR)/out/golang-starter; \
+	if test -e $(CURDIR)/go-find-liquor.key && test -e $(CURDIR)/.env; then \
+		export `cat $(CURDIR)/.env | xargs` && cosign sign-blob --key=$(CURDIR)/go-find-liquor.key --output-signature=$(CURDIR)/go-find-liquor.sig $(CURDIR)/out/go-find-liquor; \
 	else \
-		echo "no cosign private key found at $(CURDIR)/golang-starter.key. Cannot release."; \
+		echo "no cosign private key found at $(CURDIR)/go-find-liquor.key. Cannot release."; \
 	fi
 
 local-verify: get-cosign-pub-key ## Verify locally compiled binary
 	# cosign here assumes you're using Linux AMD64 binary
-	cosign verify-blob --key $(CURDIR)/golang-starter.pub --signature $(CURDIR)/golang-starter.sig $(CURDIR)/out/golang-starter
+	cosign verify-blob --key $(CURDIR)/go-find-liquor.pub --signature $(CURDIR)/go-find-liquor.sig $(CURDIR)/out/go-find-liquor
 
 local-install: local-build local-verify ## Install compiled binary to local machine
-	sudo cp $(CURDIR)/out/golang-starter /usr/local/bin/golang-starter
-	sudo chmod 0755 /usr/local/bin/golang-starter
+	sudo cp $(CURDIR)/out/go-find-liquor /usr/local/bin/go-find-liquor
+	sudo chmod 0755 /usr/local/bin/go-find-liquor
 
 upload-secrets-to-gh: ## Upload secrets from .env file to GitHub Actions Secrets + Dependabot
-	$(CURDIR)/scripts/upload_secrets_to_github.sh golang-starter 
+	$(CURDIR)/scripts/upload_secrets_to_github.sh go-find-liquor 
 
 upload-secrets-envfile-to-1pass: ## Upload secrets and .env file to 1Password
-	$(CURDIR)/scripts/upload_secrets_to_1password secrets golang-starter
-	$(CURDIR)/scripts/upload_secrets_to_1password envfile golang-starter
+	$(CURDIR)/scripts/upload_secrets_to_1password secrets go-find-liquor
+	$(CURDIR)/scripts/upload_secrets_to_1password envfile go-find-liquor
 
 docker-login: ## Login to Docker registries used to publish images to
 	if test -e $(CURDIR)/.env; then \
@@ -204,7 +204,7 @@ pre-commit-install: ## Install pre-commit hooks and necessary binaries
 pre-commit-run: ## Run pre-commit hooks against all files
 	pre-commit run --all-files
 	# manually run the following checks since their pre-commits aren't working or don't exist
-	go-licenses report github.com/toozej/golang-starter/cmd/golang-starter
+	go-licenses report github.com/toozej/go-find-liquor/cmd/go-find-liquor
 	govulncheck ./...
 
 update-golang-version: ## Update to latest Golang version across the repo
@@ -215,17 +215,17 @@ update-golang-version: ## Update to latest Golang version across the repo
 docs: docs-generate docs-serve ## Generate and serve documentation
 
 docs-generate:
-	docker build -f $(CURDIR)/Dockerfile.docs -t toozej/golang-starter:docs . 
-	docker run --rm --name golang-starter-docs -v $(CURDIR):/package -v $(CURDIR)/docs:/docs toozej/golang-starter:docs
+	docker build -f $(CURDIR)/Dockerfile.docs -t toozej/go-find-liquor:docs . 
+	docker run --rm --name go-find-liquor-docs -v $(CURDIR):/package -v $(CURDIR)/docs:/docs toozej/go-find-liquor:docs
 
 docs-serve: ## Serve documentation on http://localhost:9000
-	docker run -d --rm --name golang-starter-docs-serve -p 9000:3080 -v $(CURDIR)/docs:/data thomsch98/markserv
+	docker run -d --rm --name go-find-liquor-docs-serve -p 9000:3080 -v $(CURDIR)/docs:/data thomsch98/markserv
 	$(OPENER) http://localhost:9000/docs.md
 	@echo -e "to stop docs container, run:\n"
-	@echo "docker kill golang-starter-docs-serve"
+	@echo "docker kill go-find-liquor-docs-serve"
 
 clean: ## Remove any locally compiled binaries
-	rm -f $(CURDIR)/out/golang-starter
+	rm -f $(CURDIR)/out/go-find-liquor
 
 help: ## Display help text
 	@grep -E '^[a-zA-Z_-]+ ?:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'

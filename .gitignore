@@ -1,5 +1,5 @@
 # Cosign
-golang-starter.key
+go-find-liquor.key
 cosign.key
 *.sig
 
