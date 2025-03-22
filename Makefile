@@ -56,7 +56,7 @@ verify: get-cosign-pub-key ## Verify Docker image with Cosign
 	cosign verify --key $(CURDIR)/go-find-liquor.pub toozej/go-find-liquor:latest
 
 run: ## Run built Docker image
-	docker run --rm --name go-find-liquor --env-file $(CURDIR)/.env toozej/go-find-liquor:latest
+	docker run --rm --name go-find-liquor -v $(CURDIR)/config.yaml:/config.yaml:ro toozej/go-find-liquor:latest
 
 up: test build ## Run Docker Compose project with build Docker image
 	docker compose -f docker-compose.yml down --remove-orphans
@@ -108,7 +108,7 @@ local-build: ## Run `go build` using locally installed golang toolchain
 
 local-run: ## Run locally built binary
 	if test -e $(CURDIR)/.env; then \
-		export `cat $(CURDIR)/.env | xargs` && $(CURDIR)/out/go-find-liquor; \
+		export `cat $(CURDIR)/.env | xargs` && $(CURDIR)/out/go-find-liquor --debug --config $(CURDIR)/config.yaml --once; \
 	else \
 		echo "No environment variables found at $(CURDIR)/.env. Cannot run."; \
 	fi

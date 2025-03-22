@@ -5,6 +5,7 @@ cosign.key
 
 # local secret environment variables
 .env
+config.yaml
 
 # Binaries for programs and plugins
 *.exe

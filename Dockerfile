@@ -28,4 +28,4 @@ FROM scratch
 # Copy our static executable.
 COPY --from=build /go/go-find-liquor/go-find-liquor /go/bin/go-find-liquor
 # Run the binary.
-ENTRYPOINT ["/go/bin/go-find-liquor"]
+ENTRYPOINT ["/go/bin/go-find-liquor", "--config", "/config.yaml"]
