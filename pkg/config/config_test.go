@@ -8,34 +8,34 @@ import (
 	"github.com/spf13/viper"
 )
 
-func TestGetEnvVars(t *testing.T) {
+func TestGetConfig(t *testing.T) {
 	fs := afero.NewMemMapFs()
 
 	tests := []struct {
-		name           string
-		mockEnv        map[string]string
-		mockEnvFile    string
-		expectError    bool
-		expectUsername string
+		name          string
+		mockEnv       map[string]string
+		mockEnvFile   string
+		expectError   bool
+		expectZipcode string
 	}{
 		{
 			name: "Valid environment variable",
 			mockEnv: map[string]string{
-				"USERNAME": "testuser",
+				"zipcode": "testuser",
 			},
-			expectError:    false,
-			expectUsername: "",
+			expectError:   false,
+			expectZipcode: "",
 		},
 		{
-			name:           "Valid .env file",
-			mockEnvFile:    "username=testenvfileuser\n",
-			expectError:    false,
-			expectUsername: "testenvfileuser",
+			name:          "Valid .env file",
+			mockEnvFile:   "zipcode=testenvfileuser\n",
+			expectError:   false,
+			expectZipcode: "testenvfileuser",
 		},
 		{
-			name:           "No environment variables or .env file",
-			expectError:    false,
-			expectUsername: "",
+			name:          "No environment variables or .env file",
+			expectError:   false,
+			expectZipcode: "",
 		},
 	}
 
@@ -63,11 +63,14 @@ func TestGetEnvVars(t *testing.T) {
 			}
 
 			// Call function
-			conf := GetEnvVars()
+			conf, err := GetConfig()
+			if err != nil {
+				t.Errorf("GetConfig() returned error %v", err)
+			}
 
 			// Verify output
-			if conf.Username != tt.expectUsername {
-				t.Errorf("expected username %q, got %q", tt.expectUsername, conf.Username)
+			if conf.Zipcode != tt.expectZipcode {
+				t.Errorf("expected zipcode %q, got %q", tt.expectZipcode, conf.Zipcode)
 			}
 		})
 	}
