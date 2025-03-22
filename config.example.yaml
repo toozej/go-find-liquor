@@ -1,0 +1,64 @@
+---
+# Go Find Liquor Configuration
+
+# Items to search for (by name or code)
+# Current list of items can be found at http://www.olcc.state.or.us/pdfs/NumericPriceListCurrentMonth.csv
+items:
+  - "Blanton's"
+  - "W.L. Weller Special Reserve"
+  - "1942"  # Don Julio 1942
+  - "54633"  # Example item code
+
+# Your zipcode for store proximity
+zipcode: "97201"
+
+# Distance in miles to search (default: 10)
+distance: 15
+
+# Interval between searches in hours (default: 12h)
+interval: 6h
+
+# Optional custom user agent string
+# If not set, will cycle through a list of common user agents
+# user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+# Enable verbose logging (default: false)
+verbose: true
+
+# Notification configuration
+notifications:
+  # Gotify example
+  - type: gotify
+    endpoint: "https://gotify.example.com"
+    credential:
+      token: "YOUR_GOTIFY_TOKEN"
+
+  # Slack example
+  - type: slack
+    credential:
+      token: "YOUR_SLACK_TOKEN"
+      channel_id: "https://exampleorg.slack.com/archives/XXXXXXXXXXXXXXXXXXXXXXXX"
+
+  # Telegram example
+  - type: telegram
+    credential:
+      token: "YOUR_TELEGRAM_BOT_TOKEN"
+      chat_id: "YOUR_CHAT_ID"
+
+  # Discord example
+  - type: discord
+    credential:
+      token: "YOUR_DISCORD_BOT_TOKEN"
+      channel_id: "https://discord.com/channels/000000000000000000/XXXXXXXXXXXXXXXXXXXXX"
+
+  # Pushover example
+  - type: pushover
+    credential:
+      token: "YOUR_PUSHOVER_TOKEN"
+      receipient_id: "XXXXXXXXXXXXX"
+
+  # Pushbullet example
+  - type: pushbullet
+    credential:
+      token: "YOUR_PUSHBULLET_TOKEN"
+      device_nickname: "XXXXXXXXXXXXX"
