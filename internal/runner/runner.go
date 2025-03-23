@@ -142,6 +142,10 @@ func (r *Runner) runSearch(ctx context.Context) error {
 		}
 	}
 
+	if err := r.notifier.NotifyHeartbeat(ctx); err != nil {
+		log.Warnf("Failed to send notification: %v", err)
+	}
+
 	log.Infof("Search completed, next search in %s", r.config.Interval)
 	return nil
 }

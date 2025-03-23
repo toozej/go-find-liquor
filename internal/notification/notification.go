@@ -278,3 +278,21 @@ func (m *NotificationManager) NotifyFound(ctx context.Context, item search.Liquo
 
 	return lastErr
 }
+
+// NotifyHeartbeat sends notifications for nothing found but still trying
+func (m *NotificationManager) NotifyHeartbeat(ctx context.Context) error {
+	subject := "GFL - Heartbeat"
+	message := "GFL is still running and searching"
+
+	log.Info(message)
+
+	var lastErr error
+	for _, notifier := range m.notifiers {
+		if err := notifier.Notify(ctx, subject, message); err != nil {
+			log.Errorf("Failed to send notification: %v", err)
+			lastErr = err
+		}
+	}
+
+	return lastErr
+}
