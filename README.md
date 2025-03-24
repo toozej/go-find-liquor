@@ -20,6 +20,24 @@ Oregon Liquor Search Notification Service using [the OLCC Liquor Search website]
 - Configurable search interval
 - One-time or continuous search mode
 
+## Usage with Docker
+
+Dockerized GFL uses a final image based on [Distroless Debian static](https://github.com/GoogleContainerTools/distroless) since it includes minimal dependencies but most crucially ca-certificates (which are needed to POST notifications to HTTPS endpoints).
+
+```bash
+cp config.example.yaml config.yaml
+# edit config.yaml
+make build run
+```
+
+### Docker Compose
+
+```bash
+cp config.example.yaml config.yaml
+# edit config.yaml
+make up
+```
+
 ## Installation
 
 ```bash

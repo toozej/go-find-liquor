@@ -118,47 +118,6 @@ dockers:
     goarch: arm64
     extra_files:
       - scripts/goreleaser_entrypoint.sh
-  - image_templates:
-      - 'toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-      - 'ghcr.io/toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-      - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-    dockerfile: Dockerfile.goreleaser.distroless
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/toozej/go-find-liquor/main/README.md"
-      - "--label=io.artifacthub.package.maintainers=[{\"name\":\"toozej\"}]"
-      - "--label=io.artifacthub.package.license=GPLv3"
-      - "--label=org.opencontainers.image.description=Golang starter template"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/amd64"
-    extra_files:
-      - scripts/goreleaser_entrypoint.sh
-  - image_templates:
-      - 'toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
-      - 'ghcr.io/toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
-      - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
-    dockerfile: Dockerfile.goreleaser.distroless
-    use: buildx
-    build_flag_templates:
-      - "--pull"
-      - "--label=io.artifacthub.package.readme-url=https://raw.githubusercontent.com/toozej/go-find-liquor/main/README.md"
-      - "--label=io.artifacthub.package.maintainers=[{\"name\":\"toozej\"}]"
-      - "--label=io.artifacthub.package.license=GPLv3"
-      - "--label=org.opencontainers.image.description=Golang starter template"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.name={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
-      - "--label=org.opencontainers.image.source={{.GitURL}}"
-      - "--platform=linux/arm64"
-    goarch: arm64
-    extra_files:
-      - scripts/goreleaser_entrypoint.sh
 
 docker_manifests:
   # tagged
@@ -174,18 +133,6 @@ docker_manifests:
     image_templates:
       - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-amd64'
       - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-arm64'
-  - name_template: 'toozej/go-find-liquor:{{ .Tag }}-distroless'
-    image_templates:
-      - 'toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-      - 'toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
-  - name_template: 'ghcr.io/toozej/go-find-liquor:{{ .Tag }}-distroless'
-    image_templates:
-      - 'ghcr.io/toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-      - 'ghcr.io/toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
-  - name_template: 'quay.io/toozej/go-find-liquor:{{ .Tag }}-distroless'
-    image_templates:
-      - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-      - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
   # latest
   - name_template: 'toozej/go-find-liquor:latest'
     image_templates:
@@ -199,19 +146,6 @@ docker_manifests:
     image_templates:
       - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-amd64'
       - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-arm64'
-  # distroless
-  - name_template: 'toozej/go-find-liquor:distroless'
-    image_templates:
-      - 'toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-      - 'toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
-  - name_template: 'ghcr.io/toozej/go-find-liquor:distroless'
-    image_templates:
-      - 'ghcr.io/toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-      - 'ghcr.io/toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
-  - name_template: 'quay.io/toozej/go-find-liquor:distroless'
-    image_templates:
-      - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-distroless-amd64'
-      - 'quay.io/toozej/go-find-liquor:{{ .Tag }}-distroless-arm64'
 
 archives:
   - name_template: >-
