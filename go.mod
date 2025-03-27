@@ -2,7 +2,7 @@ module github.com/toozej/go-find-liquor
 
 go 1.24
 
-require github.com/spf13/viper v1.20.0
+require github.com/spf13/viper v1.20.1
 
 require (
 	github.com/PuerkitoBio/goquery v1.10.2
