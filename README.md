@@ -196,4 +196,4 @@ notifications:
 go-find-liquor, or GFL for short, was built since it is increasingly difficult to find some liquors at Oregon liquor stores due to short supply, mis-management, antiquated technology, etc. GFL was born to make it easier to find just the right bottle. Also, fun fact, GFL's alternative name is "good-fucking-luck", as in good luck finding those rare bottles ;).
 
 ## changes required to update golang version
-- run `./scripts/update_golang_version.sh $NEW_VERSION_GOES_HERE`
+- `make update-golang-version`
