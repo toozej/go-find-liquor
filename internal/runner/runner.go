@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -14,51 +15,66 @@ import (
 	"github.com/toozej/go-find-liquor/pkg/config"
 )
 
-// Runner executes periodic searches
-type Runner struct {
-	config    config.Config
-	searcher  *search.Searcher
-	notifier  *notification.NotificationManager
-	stopChan  chan struct{}
-	runningCh chan struct{}
+// Runner interface defines the contract for all runner implementations
+type Runner interface {
+	Start(ctx context.Context) error
+	Stop()
+	RunOnce(ctx context.Context) error
+	// GetUserCount returns the number of configured users (for testing)
+	GetUserCount() int
+	// HasUser returns true if a user with the given name is configured (for testing)
+	HasUser(name string) bool
 }
 
-// NewRunner creates a new runner with the given configuration
-func NewRunner(cfg config.Config) (*Runner, error) {
-	// Initialize the searcher
-	searcher := search.NewSearcher(cfg.UserAgent)
+// userRunner executes periodic searches for a single user (internal implementation)
+type userRunner struct {
+	userConfig config.UserConfig
+	searcher   *search.Searcher
+	notifier   *notification.NotificationManager
+	stopChan   chan struct{}
+	runningCh  chan struct{}
+	interval   time.Duration
+}
 
-	// Initialize notification manager
-	notifier, err := notification.NewNotificationManager(cfg.Notifications)
+// newUserRunner creates a new user runner with the given user configuration (internal function)
+func newUserRunner(userConfig config.UserConfig, interval time.Duration, userAgent string) (*userRunner, error) {
+	// Initialize the searcher
+	searcher := search.NewSearcher(userAgent)
+
+	// Initialize notification manager for this user
+	notifier, err := notification.NewNotificationManager(userConfig.Notifications)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create notification manager: %w", err)
+		return nil, fmt.Errorf("failed to create notification manager for user '%s': %w", userConfig.Name, err)
 	}
 
-	return &Runner{
-		config:    cfg,
-		searcher:  searcher,
-		notifier:  notifier,
-		stopChan:  make(chan struct{}),
-		runningCh: make(chan struct{}, 1),
+	return &userRunner{
+		userConfig: userConfig,
+		searcher:   searcher,
+		notifier:   notifier,
+		stopChan:   make(chan struct{}),
+		runningCh:  make(chan struct{}, 1),
+		interval:   interval,
 	}, nil
 }
 
-// Start begins periodic searches
-func (r *Runner) Start(ctx context.Context) error {
+// start begins periodic searches for this user (internal method)
+func (ur *userRunner) start(ctx context.Context) error {
+	log.Infof("Starting search runner for user '%s'", ur.userConfig.Name)
+
 	// Initial search
 	go func() {
-		r.runningCh <- struct{}{}
+		ur.runningCh <- struct{}{}
 		defer func() {
-			<-r.runningCh
+			<-ur.runningCh
 		}()
 
-		if err := r.runSearch(ctx); err != nil {
-			log.Errorf("Search failed: %v", err)
+		if err := ur.runSearch(ctx); err != nil {
+			log.Errorf("Search failed for user '%s': %v", ur.userConfig.Name, err)
 		}
 	}()
 
 	// Setup ticker for recurring searches
-	ticker := time.NewTicker(r.config.Interval)
+	ticker := time.NewTicker(ur.interval)
 	defer ticker.Stop()
 
 	for {
@@ -66,72 +82,73 @@ func (r *Runner) Start(ctx context.Context) error {
 		case <-ticker.C:
 			// Check if we're already running
 			select {
-			case r.runningCh <- struct{}{}:
+			case ur.runningCh <- struct{}{}:
 				// We got the semaphore, run the search
 				go func() {
 					defer func() {
-						<-r.runningCh
+						<-ur.runningCh
 					}()
 
-					if err := r.runSearch(ctx); err != nil {
-						log.Errorf("Search failed: %v", err)
+					if err := ur.runSearch(ctx); err != nil {
+						log.Errorf("Search failed for user '%s': %v", ur.userConfig.Name, err)
 					}
 				}()
 			default:
 				// A search is already running, skip this tick
-				log.Warnf("Previous search still running, skipping")
+				log.Warnf("Previous search still running for user '%s', skipping", ur.userConfig.Name)
 			}
-		case <-r.stopChan:
+		case <-ur.stopChan:
+			log.Infof("Stopping search runner for user '%s'", ur.userConfig.Name)
 			return nil
 		case <-ctx.Done():
+			log.Infof("Context cancelled for user '%s'", ur.userConfig.Name)
 			return ctx.Err()
 		}
 	}
 }
 
-// runSearch performs a single search for all items
-func (r *Runner) runSearch(ctx context.Context) error {
-	if len(r.config.Items) == 0 {
-		return fmt.Errorf("no items to search for")
+// runSearch performs a single search for all items for this user
+// Collects all found items before sending notifications
+func (ur *userRunner) runSearch(ctx context.Context) error {
+	if len(ur.userConfig.Items) == 0 {
+		return fmt.Errorf("user '%s' has no items to search for", ur.userConfig.Name)
 	}
 
-	if r.config.Zipcode == "" {
-		return fmt.Errorf("zipcode is required")
+	if ur.userConfig.Zipcode == "" {
+		return fmt.Errorf("user '%s' has no zipcode configured", ur.userConfig.Name)
 	}
 
-	log.Infof("Starting search for %d items within %d miles of %s",
-		len(r.config.Items), r.config.Distance, r.config.Zipcode)
+	log.Infof("Starting search for user '%s': %d items within %d miles of %s",
+		ur.userConfig.Name, len(ur.userConfig.Items), ur.userConfig.Distance, ur.userConfig.Zipcode)
 
-	for _, item := range r.config.Items {
+	var allFoundItems []search.LiquorItem
+
+	for _, item := range ur.userConfig.Items {
 		// Create a context with timeout for this item
 		itemCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
 		defer cancel()
 
-		log.Infof("Searching for item: %s", item)
+		log.Infof("User '%s' searching for item: %s", ur.userConfig.Name, item)
 
 		// Search for the item
-		results, err := r.searcher.SearchItem(itemCtx, item, r.config.Zipcode, r.config.Distance)
+		results, err := ur.searcher.SearchItem(itemCtx, item, ur.userConfig.Zipcode, ur.userConfig.Distance)
 		if err != nil {
-			log.Errorf("Failed to search for %s: %v", item, err)
+			log.Errorf("Failed to search for %s for user '%s': %v", item, ur.userConfig.Name, err)
 			continue
 		}
 
-		log.Infof("Found %d results for %s", len(results), item)
+		log.Infof("User '%s' found %d results for %s", ur.userConfig.Name, len(results), item)
 
-		// Process and notify about results
-		for _, result := range results {
-			if err := r.notifier.NotifyFound(itemCtx, result); err != nil {
-				log.Warnf("Failed to send notification: %v", err)
-			}
-		}
+		// Collect all found items
+		allFoundItems = append(allFoundItems, results...)
 
-		// Random wait between searches
-		if len(r.config.Items) > 1 && item != r.config.Items[len(r.config.Items)-1] {
+		// Random wait between searches to avoid overwhelming the service
+		if len(ur.userConfig.Items) > 1 && item != ur.userConfig.Items[len(ur.userConfig.Items)-1] {
 			randTimeBig := new(big.Int)
 			randTimeBig.SetInt64(int64(30))
 			randTime, _ := rand.Int(rand.Reader, randTimeBig)
 			waitTime := time.Duration(randTime.Int64()) * time.Second
-			log.Debugf("Waiting %s before next search", waitTime)
+			log.Debugf("User '%s' waiting %s before next search", ur.userConfig.Name, waitTime)
 
 			select {
 			case <-time.After(waitTime):
@@ -142,20 +159,201 @@ func (r *Runner) runSearch(ctx context.Context) error {
 		}
 	}
 
-	if err := r.notifier.NotifyHeartbeat(ctx); err != nil {
-		log.Warnf("Failed to send notification: %v", err)
+	// Send notifications for all found items (condensed or individual based on user config)
+	if len(allFoundItems) > 0 {
+		if err := ur.notifier.NotifyFoundItems(ctx, allFoundItems); err != nil {
+			log.Warnf("Failed to send notifications for user '%s': %v", ur.userConfig.Name, err)
+		}
 	}
 
-	log.Infof("Search completed, next search in %s", r.config.Interval)
+	// Send heartbeat notification
+	if err := ur.notifier.NotifyHeartbeat(ctx); err != nil {
+		log.Warnf("Failed to send heartbeat notification for user '%s': %v", ur.userConfig.Name, err)
+	}
+
+	log.Infof("Search completed for user '%s', next search in %s", ur.userConfig.Name, ur.interval)
 	return nil
 }
 
-// Stop halts the runner
-func (r *Runner) Stop() {
-	close(r.stopChan)
+// stop halts the user runner (internal method)
+func (ur *userRunner) stop() {
+	close(ur.stopChan)
 }
 
-// RunOnce performs a single search and returns
-func (r *Runner) RunOnce(ctx context.Context) error {
-	return r.runSearch(ctx)
+// runOnce performs a single search and returns for this user (internal method)
+func (ur *userRunner) runOnce(ctx context.Context) error {
+	return ur.runSearch(ctx)
+}
+
+// SearchRunner manages search execution for one or more users
+type SearchRunner struct {
+	config      config.Config
+	userRunners map[string]*userRunner
+	stopChan    chan struct{}
+	mu          sync.RWMutex
+}
+
+// NewRunner creates a new runner with the given configuration
+// Supports both single-user and multi-user configurations
+func NewRunner(cfg config.Config) (Runner, error) {
+	if len(cfg.Users) == 0 {
+		return nil, fmt.Errorf("no users configured")
+	}
+
+	userRunners := make(map[string]*userRunner)
+
+	// Create userRunner for each user
+	for _, userConfig := range cfg.Users {
+		userRunner, err := newUserRunner(userConfig, cfg.Interval, cfg.UserAgent)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create user runner for '%s': %w", userConfig.Name, err)
+		}
+		userRunners[userConfig.Name] = userRunner
+	}
+
+	return &SearchRunner{
+		config:      cfg,
+		userRunners: userRunners,
+		stopChan:    make(chan struct{}),
+	}, nil
+}
+
+// NewMultiUserRunner creates a new multi-user runner with the given configuration
+// Deprecated: Use NewRunner instead
+func NewMultiUserRunner(cfg config.Config) (Runner, error) {
+	return NewRunner(cfg)
+}
+
+// Start begins concurrent searches for all users
+func (sr *SearchRunner) Start(ctx context.Context) error {
+	sr.mu.RLock()
+	userCount := len(sr.userRunners)
+	sr.mu.RUnlock()
+
+	log.Infof("Starting search runner with %d users", userCount)
+
+	// Create a context that can be cancelled
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Channel to collect errors from user runners
+	errChan := make(chan error, userCount)
+
+	// Start each user runner in its own goroutine
+	sr.mu.RLock()
+	for userName, ur := range sr.userRunners {
+		go func(name string, runner *userRunner) {
+			log.Infof("Starting user runner for '%s'", name)
+			if err := runner.start(ctx); err != nil {
+				log.Errorf("User runner for '%s' failed: %v", name, err)
+				errChan <- fmt.Errorf("user '%s': %w", name, err)
+			} else {
+				log.Infof("User runner for '%s' completed", name)
+				errChan <- nil
+			}
+		}(userName, ur)
+	}
+	sr.mu.RUnlock()
+
+	// Wait for stop signal or context cancellation
+	select {
+	case <-sr.stopChan:
+		log.Info("SearchRunner received stop signal")
+		cancel() // Cancel context to stop all user runners
+	case <-ctx.Done():
+		log.Info("SearchRunner context cancelled")
+	}
+
+	// Stop all user runners
+	sr.mu.RLock()
+	for userName, ur := range sr.userRunners {
+		log.Infof("Stopping user runner for '%s'", userName)
+		ur.stop()
+	}
+	sr.mu.RUnlock()
+
+	// Wait for all user runners to complete (with timeout)
+	completedUsers := 0
+	for completedUsers < userCount {
+		select {
+		case err := <-errChan:
+			if err != nil {
+				log.Errorf("User runner error: %v", err)
+			}
+			completedUsers++
+		case <-time.After(30 * time.Second):
+			log.Warn("Timeout waiting for user runners to complete")
+			return fmt.Errorf("timeout waiting for user runners to complete")
+		}
+	}
+
+	log.Info("All user runners stopped")
+	return nil
+}
+
+// Stop halts all user runners
+func (sr *SearchRunner) Stop() {
+	close(sr.stopChan)
+}
+
+// RunOnce performs a single search for all users and returns
+func (sr *SearchRunner) RunOnce(ctx context.Context) error {
+	sr.mu.RLock()
+	userCount := len(sr.userRunners)
+	sr.mu.RUnlock()
+
+	log.Infof("Running single search for %d users", userCount)
+
+	// Channel to collect errors from user runners
+	errChan := make(chan error, userCount)
+
+	// Run search for each user concurrently
+	sr.mu.RLock()
+	for userName, ur := range sr.userRunners {
+		go func(name string, runner *userRunner) {
+			log.Infof("Running single search for user '%s'", name)
+			if err := runner.runOnce(ctx); err != nil {
+				log.Errorf("Single search failed for user '%s': %v", name, err)
+				errChan <- fmt.Errorf("user '%s': %w", name, err)
+			} else {
+				log.Infof("Single search completed for user '%s'", name)
+				errChan <- nil
+			}
+		}(userName, ur)
+	}
+	sr.mu.RUnlock()
+
+	// Wait for all searches to complete
+	var lastErr error
+	completedUsers := 0
+	for completedUsers < userCount {
+		select {
+		case err := <-errChan:
+			if err != nil {
+				log.Errorf("User search error: %v", err)
+				lastErr = err
+			}
+			completedUsers++
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
+	log.Info("All user searches completed")
+	return lastErr
+}
+
+// GetUserCount returns the number of configured users (for testing)
+func (sr *SearchRunner) GetUserCount() int {
+	sr.mu.RLock()
+	defer sr.mu.RUnlock()
+	return len(sr.userRunners)
+}
+
+// HasUser returns true if a user with the given name is configured (for testing)
+func (sr *SearchRunner) HasUser(name string) bool {
+	sr.mu.RLock()
+	defer sr.mu.RUnlock()
+	_, exists := sr.userRunners[name]
+	return exists
 }

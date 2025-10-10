@@ -1,64 +1,115 @@
 ---
 # Go Find Liquor Configuration
 
-# Items to search for (by name or code)
-# Current list of items can be found at http://www.olcc.state.or.us/pdfs/NumericPriceListCurrentMonth.csv
-items:
-  - "Blanton's"
-  - "W.L. Weller Special Reserve"
-  - "1942"  # Don Julio 1942
-  - "54633"  # Example item code
-
-# Your zipcode for store proximity
-zipcode: "97201"
-
-# Distance in miles to search (default: 10)
-distance: 15
-
-# Interval between searches in hours (default: 12h)
-interval: 6h
+# Global settings (apply to all users)
+interval: 6h  # Interval between searches (default: 12h)
+verbose: true  # Enable verbose logging (default: false)
 
 # Optional custom user agent string
 # If not set, will cycle through a list of common user agents
 # user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
-# Enable verbose logging (default: false)
-verbose: true
+# Multi-user configuration
+# Each user can have their own items, location, and notification preferences
+users:
+  # User 1 - Individual notifications
+  - name: "user1"
+    # Items to search for (by name or code)
+    # Current list of items can be found at http://www.olcc.state.or.us/pdfs/NumericPriceListCurrentMonth.csv
+    items:
+      - "Blanton's"
+      - "W.L. Weller Special Reserve"
+      - "1942"  # Don Julio 1942
+    zipcode: "97201"  # Your zipcode for store proximity
+    distance: 15      # Distance in miles to search (default: 10)
+    notifications:
+      # Gotify with individual notifications
+      - type: gotify
+        endpoint: "https://gotify.example.com"
+        condense: true
+        credential:
+          token: "USER1_GOTIFY_TOKEN"
 
-# Notification configuration
-notifications:
-  # Gotify example
-  - type: gotify
-    endpoint: "https://gotify.example.com"
-    credential:
-      token: "YOUR_GOTIFY_TOKEN"
+      # Slack with individual notifications
+      - type: slack
+        condense: false # Send separate notification for each item found
+        credential:
+          token: "USER1_SLACK_TOKEN"
+          channel_id: "https://exampleorg.slack.com/archives/XXXXXXXXXXXXXXXXXXXXXXXX"
 
-  # Slack example
-  - type: slack
-    credential:
-      token: "YOUR_SLACK_TOKEN"
-      channel_id: "https://exampleorg.slack.com/archives/XXXXXXXXXXXXXXXXXXXXXXXX"
+  # User 2 - Condensed notifications
+  - name: "user2"
+    items:
+      - "54633"  # Example item code
+      - "Eagle Rare"
+      - "Buffalo Trace"
+    zipcode: "97210"
+    distance: 10
+    notifications:
+      # Telegram with condensed notifications
+      - type: telegram
+        condense: true  # Combine all found items into single notification
+        credential:
+          token: "USER2_TELEGRAM_BOT_TOKEN"
+          chat_id: "USER2_CHAT_ID"
 
-  # Telegram example
-  - type: telegram
-    credential:
-      token: "YOUR_TELEGRAM_BOT_TOKEN"
-      chat_id: "YOUR_CHAT_ID"
+      # Discord with condensed notifications
+      - type: discord
+        condense: true
+        credential:
+          token: "USER2_DISCORD_BOT_TOKEN"
+          channel_id: "https://discord.com/channels/000000000000000000/XXXXXXXXXXXXXXXXXXXXX"
 
-  # Discord example
-  - type: discord
-    credential:
-      token: "YOUR_DISCORD_BOT_TOKEN"
-      channel_id: "https://discord.com/channels/000000000000000000/XXXXXXXXXXXXXXXXXXXXX"
+# Additional notification examples for reference:
+#
+# Pushover example:
+# - type: pushover
+#   condense: false  # or true for condensed notifications
+#   credential:
+#     token: "YOUR_PUSHOVER_TOKEN"
+#     receipient_id: "XXXXXXXXXXXXX"
+#
+# Pushbullet example:
+# - type: pushbullet
+#   condense: true
+#   credential:
+#     token: "YOUR_PUSHBULLET_TOKEN"
+#     device_nickname: "XXXXXXXXXXXXX"
 
-  # Pushover example
-  - type: pushover
-    credential:
-      token: "YOUR_PUSHOVER_TOKEN"
-      receipient_id: "XXXXXXXXXXXXX"
-
-  # Pushbullet example
-  - type: pushbullet
-    credential:
-      token: "YOUR_PUSHBULLET_TOKEN"
-      device_nickname: "XXXXXXXXXXXXX"
+# ========================================
+# BACKWARD COMPATIBILITY EXAMPLE
+# ========================================
+#
+# If you have an existing single-user configuration, it will be automatically
+# migrated to the multi-user format. Your old config like this:
+#
+# items:
+#   - "Blanton's"
+#   - "W.L. Weller Special Reserve"
+# zipcode: "97201"
+# distance: 15
+# interval: 6h
+# verbose: true
+# notifications:
+#   - type: gotify
+#     endpoint: "https://gotify.example.com"
+#     credential:
+#       token: "YOUR_GOTIFY_TOKEN"
+#
+# Will be automatically converted to:
+#
+# interval: 6h
+# verbose: true
+# users:
+#   - name: "default"
+#     items:
+#       - "Blanton's"
+#       - "W.L. Weller Special Reserve"
+#     zipcode: "97201"
+#     distance: 15
+#     notifications:
+#       - type: gotify
+#         endpoint: "https://gotify.example.com"
+#         condense: false  # Default value
+#         credential:
+#           token: "YOUR_GOTIFY_TOKEN"

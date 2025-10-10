@@ -133,11 +133,17 @@ func (n *NikoksrNotifier) Notify(ctx context.Context, subject, message string) e
 // NotificationManager manages multiple notification providers
 type NotificationManager struct {
 	notifiers []Notifier
+	condense  bool
 }
 
 // NewNotificationManager creates a notification manager from config
 func NewNotificationManager(notificationConfigs []config.NotificationConfig) (*NotificationManager, error) {
 	manager := &NotificationManager{}
+
+	// Determine condense setting from first notification config (all should have same setting per user)
+	if len(notificationConfigs) > 0 {
+		manager.condense = notificationConfigs[0].Condense
+	}
 
 	// Add nicoksr notify for handling multiple services
 	nikoksrNotifier := NewNikoksrNotifier()
@@ -271,6 +277,83 @@ func (m *NotificationManager) NotifyFound(ctx context.Context, item search.Liquo
 	var lastErr error
 	for _, notifier := range m.notifiers {
 		if err := notifier.Notify(ctx, subject, message); err != nil {
+			log.Errorf("Failed to send notification: %v", err)
+			lastErr = err
+		}
+	}
+
+	return lastErr
+}
+
+// NotifyFoundItems sends notifications for multiple found liquor items
+// If condense is enabled, combines all items into a single notification
+// If condense is disabled, sends individual notifications for each item
+func (m *NotificationManager) NotifyFoundItems(ctx context.Context, items []search.LiquorItem) error {
+	if len(items) == 0 {
+		return nil // No items to notify about
+	}
+
+	if m.condense {
+		return m.sendCondensedNotification(ctx, items)
+	}
+
+	// Send individual notifications
+	var lastErr error
+	for _, item := range items {
+		if err := m.NotifyFound(ctx, item); err != nil {
+			lastErr = err
+		}
+	}
+	return lastErr
+}
+
+// sendCondensedNotification creates and sends a single notification for multiple items
+func (m *NotificationManager) sendCondensedNotification(ctx context.Context, items []search.LiquorItem) error {
+	if len(items) == 0 {
+		return nil
+	}
+
+	var subject string
+	var message strings.Builder
+
+	if len(items) == 1 {
+		// Single item - use same format as individual notification
+		item := items[0]
+		subject = fmt.Sprintf("GFL - Found %s!", item.Name)
+		message.WriteString(fmt.Sprintf("Found %s at %s on %s at %s for %s",
+			item.Name,
+			item.Store,
+			item.Date.Format("2006-01-02"),
+			item.Date.Format("15:04:05"),
+			item.Price,
+		))
+	} else {
+		// Multiple items - create condensed format
+		subject = fmt.Sprintf("GFL - Found %d items!", len(items))
+		message.WriteString(fmt.Sprintf("Found %d liquor items:\n\n", len(items)))
+
+		for i, item := range items {
+			message.WriteString(fmt.Sprintf("%d. %s at %s for %s\n",
+				i+1,
+				item.Name,
+				item.Store,
+				item.Price,
+			))
+		}
+
+		// Add timestamp for the search
+		message.WriteString(fmt.Sprintf("\nSearch completed on %s at %s",
+			items[0].Date.Format("2006-01-02"),
+			items[0].Date.Format("15:04:05"),
+		))
+	}
+
+	messageStr := message.String()
+	log.Info(messageStr)
+
+	var lastErr error
+	for _, notifier := range m.notifiers {
+		if err := notifier.Notify(ctx, subject, messageStr); err != nil {
 			log.Errorf("Failed to send notification: %v", err)
 			lastErr = err
 		}

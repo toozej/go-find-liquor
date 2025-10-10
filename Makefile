@@ -33,7 +33,7 @@ else
 	OPENER=open
 endif
 
-.PHONY: all vet test build verify run up down install local local-vet local-test local-cover local-run local-kill local-iterate local-release-test local-release local-sign local-verify local-release-verify local-install get-cosign-pub-key docker-login pre-commit-install pre-commit-run pre-commit pre-reqs update-golang-version upload-secrets-to-gh upload-secrets-envfile-to-1pass docs docs-generate docs-serve clean help
+.PHONY: all vet test build verify run up down install local local-vet local-test local-cover local-run local-kill local-iterate local-release-test local-release local-sign local-verify local-release-verify local-install get-cosign-pub-key docker-login pre-commit-install pre-commit-run pre-commit pre-reqs update-golang-version upload-secrets-to-gh upload-secrets-envfile-to-1pass docs clean help
 
 all: vet pre-commit clean test build verify run ## Run default workflow via Docker
 local: local-update-deps local-vendor local-vet pre-commit clean local-test local-cover local-build local-sign local-verify local-kill local-run ## Run default workflow using locally installed Golang toolchain
@@ -205,17 +205,10 @@ update-golang-version: ## Update to latest Golang version across the repo
 	@VERSION=`curl -s "https://go.dev/dl/?mode=json" | jq -r '.[0].version' | sed 's/go//' | cut -d '.' -f 1,2`; \
 	$(CURDIR)/scripts/update_golang_version.sh $$VERSION
 
-docs: docs-generate docs-serve ## Generate and serve documentation
-
-docs-generate:
-	docker build -f $(CURDIR)/Dockerfile.docs -t toozej/go-find-liquor:docs . 
-	docker run --rm --name go-find-liquor-docs -v $(CURDIR):/package -v $(CURDIR)/docs:/docs toozej/go-find-liquor:docs
-
-docs-serve: ## Serve documentation on http://localhost:9000
-	docker run -d --rm --name go-find-liquor-docs-serve -p 9000:3080 -v $(CURDIR)/docs:/data thomsch98/markserv
-	$(OPENER) http://localhost:9000/docs.md
-	@echo -e "to stop docs container, run:\n"
-	@echo "docker kill go-find-liquor-docs-serve"
+docs: ## Generate and serve documentation
+	@echo "Starting Go documentation server on localhost"
+	@echo "Use Ctrl+C to stop the server"
+	go doc -http
 
 clean: ## Remove any locally compiled binaries
 	rm -f $(CURDIR)/out/go-find-liquor
