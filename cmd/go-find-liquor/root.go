@@ -10,7 +10,6 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-	"go.uber.org/automaxprocs/maxprocs"
 
 	"github.com/toozej/go-find-liquor/internal/runner"
 	"github.com/toozej/go-find-liquor/pkg/config"
@@ -159,11 +158,6 @@ func Execute() error {
 }
 
 func init() {
-	_, err := maxprocs.Set()
-	if err != nil {
-		log.Error("Error setting maxprocs: ", err)
-	}
-
 	// create rootCmd-level flags
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug-level logging")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "Config file path")

@@ -27,5 +27,6 @@ vendor/
 # Generated directories
 completions/
 manpages/
-docs/
 dist/
+docs/diagrams/go-diagrams/
+profiles/

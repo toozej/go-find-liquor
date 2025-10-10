@@ -1,8 +1,12 @@
 # runtime image including CA certs and tzdata
 FROM gcr.io/distroless/static-debian12:latest
-# Copy our static executable.
-COPY go-find-liquor /go/bin/go-find-liquor
+
+# Copy our static executable with multi-platform support
+ARG TARGETPLATFORM
+COPY $TARGETPLATFORM/go-find-liquor /go/bin/go-find-liquor
+
 # Expose port for publishing as web service
 # EXPOSE 8081
+
 # Run the binary.
 ENTRYPOINT ["/go/bin/go-find-liquor"]
