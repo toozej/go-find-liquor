@@ -31,5 +31,10 @@ dist/
 docs/diagrams/go-diagrams/
 profiles/
 
+# Temporary files
+prompt.txt
+prompt.md
+TASKS.md
+
 # AI tooling directories
 .kiro/

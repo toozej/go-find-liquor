@@ -13,7 +13,6 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	log "github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 const (
@@ -123,9 +122,7 @@ func (s *Searcher) AgeVerification() error {
 	formData.Set("action", "search")
 
 	// Submit the form
-	if viper.GetBool("debug") {
-		log.Debugf("AgeVerification() POSTing %v\n", formData)
-	}
+	log.Debugf("AgeVerification() POSTing %v\n", formData)
 	// nosemgrep: problem-based-packs.insecure-transport.go-stdlib.http-customized-request.http-customized-request
 	req, err = http.NewRequest("POST", ageBtnFormURL, strings.NewReader(formData.Encode()))
 	if err != nil {
@@ -168,9 +165,7 @@ func (s *Searcher) SearchItem(ctx context.Context, item string, zipcode string, 
 	formData.Set("btnSearch", "Search")
 
 	// Submit search form
-	if viper.GetBool("debug") {
-		log.Debugf("SearchItem() POSTing formData %v\n", formData)
-	}
+	log.Debugf("SearchItem() POSTing formData %v\n", formData)
 	// nosemgrep: problem-based-packs.insecure-transport.go-stdlib.http-customized-request.http-customized-request
 	req, err := http.NewRequest("POST", searchURL, strings.NewReader(formData.Encode()))
 	if err != nil {

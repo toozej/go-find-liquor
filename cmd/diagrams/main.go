@@ -54,7 +54,7 @@ func main() {
 	// Generate component diagram
 	generateComponentDiagram()
 
-	fmt.Println("go-find-liquor diagram .dot files generated successfully in ./docs/diagrams/go-diagrams/")
+	fmt.Println("Diagram .dot files generated successfully in ./docs/diagrams/go-diagrams/")
 }
 
 // generateArchitectureDiagram creates a high-level architecture diagram showing
@@ -79,7 +79,7 @@ func generateArchitectureDiagram() {
 	// Define components
 	user := generic.Blank.Blank(diagram.NodeLabel("User"))
 	cli := programming.Language.Go(diagram.NodeLabel("CLI Application\n(go-find-liquor)"))
-	config := generic.Blank.Blank(diagram.NodeLabel("Multi-User Config\n(YAML/Env)"))
+	config := generic.Blank.Blank(diagram.NodeLabel("Multi-User Config\n(YAML/env/godotenv)"))
 	runner := programming.Language.Go(diagram.NodeLabel("Search Runner\n(Scheduler)"))
 	search := programming.Language.Go(diagram.NodeLabel("Oregon Liquor\nSearch Scraper"))
 	notifications := generic.Blank.Blank(diagram.NodeLabel("Notifications\n(Gotify/Slack/etc)"))

@@ -1,3 +1,33 @@
+// Package cmd provides command-line interface functionality for the go-find-liquor application.
+//
+// This package implements the root command and manages the command-line interface
+// using the cobra library. It handles configuration, logging setup, and command
+// execution for the Oregon Liquor Search Notification Service.
+//
+// The package integrates with several components:
+//   - Configuration management through pkg/config (YAML/env/godotenv)
+//   - Core functionality through internal/runner (multi-user search orchestration)
+//   - Search functionality through internal/search (OLCC website scraping)
+//   - Notification system through internal/notification (multi-channel alerts)
+//   - Manual pages through pkg/man
+//   - Version information through pkg/version
+//
+// Key features:
+//   - Multi-user configuration support
+//   - Continuous and single-run search modes
+//   - Signal handling for graceful shutdown
+//   - Debug logging configuration
+//   - Custom config file support
+//
+// Example usage:
+//
+//	import "github.com/toozej/go-find-liquor/cmd/go-find-liquor"
+//
+//	func main() {
+//		if err := cmd.Execute(); err != nil {
+//			os.Exit(1)
+//		}
+//	}
 package cmd
 
 import (
@@ -9,7 +39,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/toozej/go-find-liquor/internal/runner"
 	"github.com/toozej/go-find-liquor/pkg/config"
@@ -20,6 +49,7 @@ import (
 var (
 	configFile string
 	once       bool
+	debug      bool
 )
 
 var rootCmd = &cobra.Command{
@@ -123,21 +153,14 @@ func logConfigurationSummary(conf config.Config) {
 }
 
 func rootCmdPreRun(cmd *cobra.Command, args []string) {
-	if err := viper.BindPFlags(cmd.Flags()); err != nil {
-		return
-	}
-
 	// Set custom config file if specified
 	if configFile != "" {
-		viper.SetConfigFile(configFile)
-		if err := viper.ReadInConfig(); err != nil {
-			log.Fatalf("Failed to read config file %s: %v", configFile, err)
-		}
+		config.SetConfigFile(configFile)
 		log.Infof("Using config file: %s", configFile)
 	}
 
 	// Set log level based on debug flag or config verbose setting
-	if viper.GetBool("debug") {
+	if debug {
 		log.SetLevel(log.DebugLevel)
 		log.Debug("Debug logging enabled via command line flag")
 	} else {
@@ -159,7 +182,7 @@ func Execute() error {
 
 func init() {
 	// create rootCmd-level flags
-	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug-level logging")
+	rootCmd.PersistentFlags().BoolVarP(&debug, "debug", "d", false, "Enable debug-level logging")
 	rootCmd.PersistentFlags().StringVarP(&configFile, "config", "c", "", "Config file path")
 	rootCmd.Flags().BoolVarP(&once, "once", "o", false, "Run search once and exit")
 
