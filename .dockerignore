@@ -1,5 +1,6 @@
 .git
 .github
+.kiro
 .gitignore
 .pre-commit-config.yaml
 c.out

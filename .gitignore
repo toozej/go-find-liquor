@@ -30,3 +30,6 @@ manpages/
 dist/
 docs/diagrams/go-diagrams/
 profiles/
+
+# AI tooling directories
+.kiro/
