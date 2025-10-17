@@ -218,12 +218,6 @@ func NewRunner(cfg config.Config) (Runner, error) {
 	}, nil
 }
 
-// NewMultiUserRunner creates a new multi-user runner with the given configuration
-// Deprecated: Use NewRunner instead
-func NewMultiUserRunner(cfg config.Config) (Runner, error) {
-	return NewRunner(cfg)
-}
-
 // Start begins concurrent searches for all users
 func (sr *SearchRunner) Start(ctx context.Context) error {
 	sr.mu.RLock()

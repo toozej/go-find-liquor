@@ -146,57 +146,6 @@ func TestRunner_NewRunner(t *testing.T) {
 	}
 }
 
-// TestRunner_NewMultiUserRunner tests backward compatibility
-func TestRunner_NewMultiUserRunner(t *testing.T) {
-	cfg := config.Config{
-		Interval:  time.Hour,
-		UserAgent: "test-agent",
-		Users: []config.UserConfig{
-			{
-				Name:     "user1",
-				Items:    []string{"item1"},
-				Zipcode:  "97201",
-				Distance: 10,
-				Notifications: []config.NotificationConfig{
-					{
-						Type:     "gotify",
-						Endpoint: "http://localhost:8080",
-						Credential: map[string]string{
-							"token": "test-token",
-						},
-						Condense: false,
-					},
-				},
-			},
-		},
-	}
-
-	runner, err := NewMultiUserRunner(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create runner via NewMultiUserRunner: %v", err)
-	}
-
-	if runner == nil {
-		t.Error("NewMultiUserRunner() returned nil runner")
-	}
-
-	// Verify it's the same type as NewRunner
-	runner2, err := NewRunner(cfg)
-	if err != nil {
-		t.Fatalf("Failed to create runner via NewRunner: %v", err)
-	}
-
-	if runner == nil || runner2 == nil {
-		t.Error("One of the runners is nil")
-		return
-	}
-
-	// Both should have the same user count
-	if runner.GetUserCount() != runner2.GetUserCount() {
-		t.Error("NewRunner and NewMultiUserRunner should return equivalent runners")
-	}
-}
-
 // TestRunner_RunOnce tests single execution of all user searches
 func TestRunner_RunOnce(t *testing.T) {
 	// Create a test configuration with multiple users
