@@ -191,7 +191,7 @@ homebrew_casks:
       name: homebrew-tap
       token: "{{ .Env.TAP_GITHUB_TOKEN }}"
     manpages:
-      - "man/go-find-liquor.1.gz"
+      - "manpages/go-find-liquor.1.gz"
     completions:
       bash: "completions/go-find-liquor.bash"
       zsh: "completions/go-find-liquor.zsh"
