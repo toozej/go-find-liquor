@@ -31,4 +31,5 @@ COPY --from=build /go/go-find-liquor/go-find-liquor /go/bin/go-find-liquor
 # Expose port for publishing as web service
 # EXPOSE 8081
 # Run the binary.
+USER nonroot
 ENTRYPOINT ["/go/bin/go-find-liquor", "--config", "/config.yaml"]
