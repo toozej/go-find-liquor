@@ -104,7 +104,7 @@ func (s *Searcher) AgeVerification() error {
 
 	req.Header.Set("User-Agent", s.userAgent)
 
-	resp, err := s.client.Do(req)
+	resp, err := s.client.Do(req) // #nosec G704 -- URL is from config, not user input
 	if err != nil {
 		return fmt.Errorf("failed to get page: %w", err)
 	}
@@ -133,7 +133,7 @@ func (s *Searcher) AgeVerification() error {
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Referer", ageBtnFormURL)
 
-	resp, err = s.client.Do(req)
+	resp, err = s.client.Do(req) // #nosec G704 -- URL is hardcoded
 	if err != nil {
 		return fmt.Errorf("failed to submit age verification: %w", err)
 	}
@@ -177,7 +177,7 @@ func (s *Searcher) SearchItem(ctx context.Context, item string, zipcode string, 
 	req.Header.Set("Referer", searchURL)
 
 	// Perform search request
-	resp, err := s.client.Do(req)
+	resp, err := s.client.Do(req) // #nosec G704 -- URL is hardcoded
 	if err != nil {
 		return nil, fmt.Errorf("search request failed: %w", err)
 	}

@@ -64,7 +64,7 @@ func (g *GotifyNotifier) Notify(ctx context.Context, subject, message string) er
 
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := g.client.Do(req)
+	resp, err := g.client.Do(req) // #nosec G704 -- GotifyURL is from config, not user input
 	if err != nil {
 		return fmt.Errorf("failed to send notification: %w", err)
 	}
