@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	baseURL       = "http://www.oregonliquorsearch.com/"
-	searchURL     = "http://www.oregonliquorsearch.com/servlet/FrontController"
-	ageBtnFormURL = "http://www.oregonliquorsearch.com/servlet/WelcomeController"
+	baseURL       = "https://www.oregonliquorsearch.com/"
+	searchURL     = "https://www.oregonliquorsearch.com/servlet/FrontController"
+	ageBtnFormURL = "https://www.oregonliquorsearch.com/servlet/WelcomeController"
 )
 
 // DefaultCommonItems are items that are typically always in stock at OLCC stores,
@@ -120,7 +120,6 @@ func (s *Searcher) updateUserAgent() {
 // AgeVerification performs the age verification
 func (s *Searcher) AgeVerification() error {
 	// First get the page to get session cookies
-	// nosemgrep: problem-based-packs.insecure-transport.go-stdlib.http-customized-request.http-customized-request
 	req, err := http.NewRequest("GET", baseURL, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
@@ -147,7 +146,6 @@ func (s *Searcher) AgeVerification() error {
 
 	// Submit the form
 	log.Debugf("AgeVerification() POSTing %v\n", formData)
-	// nosemgrep: problem-based-packs.insecure-transport.go-stdlib.http-customized-request.http-customized-request
 	req, err = http.NewRequest("POST", ageBtnFormURL, strings.NewReader(formData.Encode()))
 	if err != nil {
 		return fmt.Errorf("failed to create form submission request: %w", err)
@@ -190,7 +188,6 @@ func (s *Searcher) SearchItem(ctx context.Context, item string, zipcode string, 
 
 	// Submit search form
 	log.Debugf("SearchItem() POSTing formData %v\n", formData)
-	// nosemgrep: problem-based-packs.insecure-transport.go-stdlib.http-customized-request.http-customized-request
 	req, err := http.NewRequest("POST", searchURL, strings.NewReader(formData.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create search request: %w", err)
@@ -229,7 +226,6 @@ func (s *Searcher) SearchItem(ctx context.Context, item string, zipcode string, 
 // extractResults extracts found products from the table and creates a list of found liquor item results
 func extractResults(doc *goquery.Document, product ProductInfo) []LiquorItem {
 	var results []LiquorItem
-	currentStore := ""
 
 	doc.Find("tr.row, tr.alt-row").Each(func(i int, s *goquery.Selection) {
 		// Check if the store has stock
@@ -238,13 +234,29 @@ func extractResults(doc *goquery.Document, product ProductInfo) []LiquorItem {
 			return // Skip stores with no stock
 		}
 
-		currentStore = strings.TrimSpace(s.Find("td").Eq(2).Text())
+		tds := s.Find("td")
+		// The actual table columns are:
+		// [0]Store No, [1]Location(City), [2]Address, [3]Zip, [4]Telephone, [5]Store Hours, [6]Qty, [7]Distance
+		// Note: Store No (td[0]) contains <noscript><a>...</noscript><span class="link">NNNN</span><noscript>...</noscript>
+		// The store number is in <span class="link">, so we prefer that; fall back to full td text.
+		storeNoTd := tds.Eq(0)
+		storeNo := strings.TrimSpace(storeNoTd.Find("span.link").Text())
+		if storeNo == "" {
+			storeNo = strings.TrimSpace(storeNoTd.Text())
+		}
+		location := strings.TrimSpace(tds.Eq(1).Text())
 
-		if currentStore != "" {
+		// Combine store number and city for a meaningful store identifier
+		storeName := location
+		if storeNo != "" {
+			storeName = storeNo + " - " + location
+		}
+
+		if storeName != "" {
 			results = append(results, LiquorItem{
 				Name:  product.Name,
 				Code:  product.ItemCode,
-				Store: currentStore,
+				Store: storeName,
 				Date:  time.Now(),
 				Price: product.BottlePrice,
 			})
@@ -259,12 +271,16 @@ func extractProductInfo(doc *goquery.Document) ProductInfo {
 	product := ProductInfo{}
 
 	// Extract product name and item code from the product description
-	productDesc := strings.TrimSpace(doc.Find("#product-desc h2").Text())
+	// The actual HTML contains: "Item\n\t99900014675(0146B):\n\tJACK DANIELS #7 BL LABEL"
+	// We need to normalize whitespace before parsing.
+	productDescRaw := doc.Find("#product-desc h2").Text()
+	// Normalize whitespace: replace tabs/newlines with spaces, collapse multiple spaces
+	productDesc := strings.TrimSpace(strings.Join(strings.Fields(productDescRaw), " "))
 	if productDesc != "" {
 		// Parse "Item 99900733075(7330B): MICHTER'S STRAIGHT RYE"
 		parts := strings.SplitN(productDesc, ":", 2)
 		if len(parts) == 2 {
-			// Extract the item code
+			// Extract the item code from "Item 99900014675(0146B)"
 			itemParts := strings.Split(parts[0], " ")
 			if len(itemParts) >= 2 {
 				fullCode := itemParts[1]
@@ -288,21 +304,37 @@ func extractProductInfo(doc *goquery.Document) ProductInfo {
 		}
 	}
 
-	// Extract bottle price
+	// Extract product details from the table.
+	// The actual HTML table has multi-row layout where <th> and <td> are
+	// siblings within each <tr>, e.g.:
+	//   <tr><th>Category:</th><td>DOMESTIC WHISKEY</td><th>Age:</th><td> </td></tr>
+	//   <tr><th>Size:</th><td>750 ML</td><th>Case Price:</th><td>$275.40</td></tr>
+	//   <tr><th>Proof:</th><td>80.0</td><th>Bottle Price:</th><td>$22.95</td></tr>
+	// The product description <th> with colspan="4" has no following <td>,
+	// so we skip it by checking that th.Next() has elements.
 	doc.Find("#product-details tr").Each(func(i int, s *goquery.Selection) {
 		s.Find("th").Each(func(j int, th *goquery.Selection) {
+			next := th.Next()
+			if next.Length() == 0 {
+				return // Skip <th> elements without a following sibling (e.g., product-desc)
+			}
+			// Only process if the next sibling is a <td>
+			if !next.Is("td") {
+				return
+			}
 			label := strings.TrimSpace(th.Text())
+			value := strings.TrimSpace(next.Text())
 			switch label {
 			case "Bottle Price:":
-				product.BottlePrice = strings.TrimSpace(th.Next().Text())
+				product.BottlePrice = value
 			case "Case Price:":
-				product.CasePrice = strings.TrimSpace(th.Next().Text())
+				product.CasePrice = value
 			case "Size:":
-				product.Size = strings.TrimSpace(th.Next().Text())
+				product.Size = value
 			case "Proof:":
-				product.Proof = strings.TrimSpace(th.Next().Text())
+				product.Proof = value
 			case "Category:":
-				product.Category = strings.TrimSpace(th.Next().Text())
+				product.Category = value
 			}
 		})
 	})

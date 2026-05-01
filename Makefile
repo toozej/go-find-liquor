@@ -39,7 +39,7 @@ else
 	OPENER=open
 endif
 
-.PHONY: all vet test build verify run up down distroless-build distroless-run install local local-vet local-test local-cover local-run local-kill local-iterate local-release-test local-release local-sign local-verify local-release-verify local-install get-cosign-pub-key docker-login pre-commit-install pre-commit-run pre-commit pre-reqs update-golang-version upload-secrets-to-gh upload-secrets-envfile-to-1pass docs diagrams mutation-test test-changed watch-test profile-cpu profile-mem profile-all benchmark clean help
+.PHONY: all vet test e2e build verify run up down distroless-build distroless-run install local local-vet local-test local-e2e local-cover local-run local-kill local-iterate local-release-test local-release local-sign local-verify local-release-verify local-install get-cosign-pub-key docker-login pre-commit-install pre-commit-run pre-commit pre-reqs update-golang-version upload-secrets-to-gh upload-secrets-envfile-to-1pass docs diagrams mutation-test test-changed watch-test profile-cpu profile-mem profile-all benchmark clean help
 
 all: vet pre-commit clean test build verify run ## Run default workflow via Docker
 local: local-update-deps local-vendor local-vet pre-commit clean local-test local-cover local-build local-sign local-verify local-kill local-run ## Run default workflow using locally installed Golang toolchain
@@ -50,7 +50,13 @@ vet: ## Run `go vet` in Docker
 	docker build --target vet -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest . 
 
 test: ## Run `go test` with race detection in Docker
-	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest . 
+	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest .
+
+e2e: ## Run end-to-end tests against live Oregon Liquor Search
+	go test -race -v -tags e2e $(CURDIR)/internal/search/
+
+local-e2e: ## Run end-to-end tests against live Oregon Liquor Search using locally installed Golang toolchain
+	go test -race -v -tags e2e $(CURDIR)/internal/search/ 
 
 build: ## Build Docker image, including running tests
 	docker build -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest .
@@ -274,9 +280,13 @@ benchmark: ## Run benchmarks
 	@echo "Running benchmarks..."
 	go test -bench=. -benchmem $(CURDIR)/internal/search/
 
-clean: ## Remove any locally compiled binaries and profiles
-	rm -f $(CURDIR)/out/go-find-liquor
-	rm -rf $(CURDIR)/profiles/
+clean: ## Clean up built Docker images and build artifacts
+	@echo "=== Cleaning up compiled binaries, profiles, and demo files ==="
+	@rm -f $(CURDIR)/out/go-find-liquor
+	@rm -rf $(CURDIR)/profiles/
+	@rm -rf $(CURDIR)/dist/
+	@rm -rf $(CURDIR)/manpages/ $(CURDIR)/completions/
+	-docker image rm toozej/go-find-liquor:latest
 
 help: ## Display help text
-	@grep -E '^[a-zA-Z_-]+ ?:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@grep -E '^[a-zA-Z0-9_-]+ ?:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
