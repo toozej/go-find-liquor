@@ -291,3 +291,74 @@ func TestNewNotificationManager_CondenseField(t *testing.T) {
 		})
 	}
 }
+
+func TestNotificationManager_NotifyHeartbeat_NoHealthCheck(t *testing.T) {
+	manager, mockNotifier := createTestNotificationManager(false)
+
+	err := manager.NotifyHeartbeat(context.Background(), "", false)
+
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	notifications := mockNotifier.GetNotifications()
+	if len(notifications) != 1 {
+		t.Fatalf("Expected 1 notification, got %d", len(notifications))
+	}
+
+	expectedSubject := "GFL - Heartbeat"
+	if notifications[0].Subject != expectedSubject {
+		t.Errorf("Expected subject '%s', got '%s'", expectedSubject, notifications[0].Subject)
+	}
+
+	expectedMessage := "GFL is still running and searching"
+	if notifications[0].Message != expectedMessage {
+		t.Errorf("Expected message '%s', got '%s'", expectedMessage, notifications[0].Message)
+	}
+}
+
+func TestNotificationManager_NotifyHeartbeat_HealthCheckFound(t *testing.T) {
+	manager, mockNotifier := createTestNotificationManager(false)
+
+	err := manager.NotifyHeartbeat(context.Background(), "TITO'S HANDMADE VODKA", true)
+
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	notifications := mockNotifier.GetNotifications()
+	if len(notifications) != 1 {
+		t.Fatalf("Expected 1 notification, got %d", len(notifications))
+	}
+
+	if !strings.Contains(notifications[0].Message, "TITO'S HANDMADE VODKA") {
+		t.Errorf("Expected message to contain health check item, got: %s", notifications[0].Message)
+	}
+
+	if !strings.Contains(notifications[0].Message, "found it in stock") {
+		t.Errorf("Expected message to indicate item found, got: %s", notifications[0].Message)
+	}
+}
+
+func TestNotificationManager_NotifyHeartbeat_HealthCheckNotFound(t *testing.T) {
+	manager, mockNotifier := createTestNotificationManager(false)
+
+	err := manager.NotifyHeartbeat(context.Background(), "JACK DANIEL'S OLD NO 7", false)
+
+	if err != nil {
+		t.Errorf("Expected no error, got: %v", err)
+	}
+
+	notifications := mockNotifier.GetNotifications()
+	if len(notifications) != 1 {
+		t.Fatalf("Expected 1 notification, got %d", len(notifications))
+	}
+
+	if !strings.Contains(notifications[0].Message, "JACK DANIEL'S OLD NO 7") {
+		t.Errorf("Expected message to contain health check item, got: %s", notifications[0].Message)
+	}
+
+	if !strings.Contains(notifications[0].Message, "not found") {
+		t.Errorf("Expected message to indicate item not found, got: %s", notifications[0].Message)
+	}
+}

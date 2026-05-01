@@ -362,10 +362,20 @@ func (m *NotificationManager) sendCondensedNotification(ctx context.Context, ite
 	return lastErr
 }
 
-// NotifyHeartbeat sends notifications for nothing found but still trying
-func (m *NotificationManager) NotifyHeartbeat(ctx context.Context) error {
+// NotifyHeartbeat sends notifications for nothing found but still trying.
+// If healthCheckItem is non-empty, it indicates a random common item was searched
+// as a health check, and healthCheckFound indicates whether it was found in stock.
+func (m *NotificationManager) NotifyHeartbeat(ctx context.Context, healthCheckItem string, healthCheckFound bool) error {
 	subject := "GFL - Heartbeat"
 	message := "GFL is still running and searching"
+
+	if healthCheckItem != "" {
+		if healthCheckFound {
+			message = fmt.Sprintf("%s. Health check: searched for '%s' and found it in stock", message, healthCheckItem)
+		} else {
+			message = fmt.Sprintf("%s. Health check: searched for '%s' but it was not found", message, healthCheckItem)
+		}
+	}
 
 	log.Info(message)
 

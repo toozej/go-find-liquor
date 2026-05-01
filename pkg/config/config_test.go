@@ -371,3 +371,56 @@ func TestConfigFileLoadingBehavior(t *testing.T) {
 	t.Log("- If custom config file is set via CLI, do NOT load default config.yaml")
 	t.Log("- This prevents double-loading when user specifies a custom config file")
 }
+
+func TestCommonItemStructure(t *testing.T) {
+	item := CommonItem{
+		Code: "99900046075",
+		Name: "Bacardi Superior Rum",
+	}
+
+	if item.Code != "99900046075" {
+		t.Errorf("Expected Code '99900046075', got %q", item.Code)
+	}
+
+	if item.Name != "Bacardi Superior Rum" {
+		t.Errorf("Expected Name 'Bacardi Superior Rum', got %q", item.Name)
+	}
+}
+
+func TestConfigCommonItemsField(t *testing.T) {
+	config := Config{
+		Interval: 6 * time.Hour,
+		CommonItems: []CommonItem{
+			{Code: "99900046075", Name: "Bacardi Superior Rum"},
+			{Code: "99900014675", Name: "Jack Daniels #7 Whiskey"},
+		},
+		Users: []UserConfig{
+			{Name: "user1", Items: []string{"Blanton's"}, Zipcode: "97201", Distance: 10},
+		},
+	}
+
+	if len(config.CommonItems) != 2 {
+		t.Errorf("Expected 2 common items, got %d", len(config.CommonItems))
+	}
+
+	if config.CommonItems[0].Code != "99900046075" {
+		t.Errorf("Expected first common item code '99900046075', got %q", config.CommonItems[0].Code)
+	}
+
+	if config.CommonItems[1].Name != "Jack Daniels #7 Whiskey" {
+		t.Errorf("Expected second common item name 'Jack Daniels #7 Whiskey', got %q", config.CommonItems[1].Name)
+	}
+}
+
+func TestConfigCommonItemsEmpty(t *testing.T) {
+	config := Config{
+		Interval: 6 * time.Hour,
+		Users: []UserConfig{
+			{Name: "user1", Items: []string{"Blanton's"}, Zipcode: "97201", Distance: 10},
+		},
+	}
+
+	if len(config.CommonItems) != 0 {
+		t.Errorf("Expected 0 common items when not configured, got %d", len(config.CommonItems))
+	}
+}

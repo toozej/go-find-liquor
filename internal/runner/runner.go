@@ -28,16 +28,17 @@ type Runner interface {
 
 // userRunner executes periodic searches for a single user (internal implementation)
 type userRunner struct {
-	userConfig config.UserConfig
-	searcher   *search.Searcher
-	notifier   *notification.NotificationManager
-	stopChan   chan struct{}
-	runningCh  chan struct{}
-	interval   time.Duration
+	userConfig  config.UserConfig
+	searcher    *search.Searcher
+	notifier    *notification.NotificationManager
+	stopChan    chan struct{}
+	runningCh   chan struct{}
+	interval    time.Duration
+	commonItems []string
 }
 
 // newUserRunner creates a new user runner with the given user configuration (internal function)
-func newUserRunner(userConfig config.UserConfig, interval time.Duration, userAgent string) (*userRunner, error) {
+func newUserRunner(userConfig config.UserConfig, interval time.Duration, userAgent string, commonItems []string) (*userRunner, error) {
 	// Initialize the searcher
 	searcher := search.NewSearcher(userAgent)
 
@@ -48,12 +49,13 @@ func newUserRunner(userConfig config.UserConfig, interval time.Duration, userAge
 	}
 
 	return &userRunner{
-		userConfig: userConfig,
-		searcher:   searcher,
-		notifier:   notifier,
-		stopChan:   make(chan struct{}),
-		runningCh:  make(chan struct{}, 1),
-		interval:   interval,
+		userConfig:  userConfig,
+		searcher:    searcher,
+		notifier:    notifier,
+		stopChan:    make(chan struct{}),
+		runningCh:   make(chan struct{}, 1),
+		interval:    interval,
+		commonItems: commonItems,
 	}, nil
 }
 
@@ -68,7 +70,7 @@ func (ur *userRunner) start(ctx context.Context) error {
 			<-ur.runningCh
 		}()
 
-		if err := ur.runSearch(ctx); err != nil {
+		if err := ur.runSearch(ctx, true); err != nil {
 			log.Errorf("Search failed for user '%s': %v", ur.userConfig.Name, err)
 		}
 	}()
@@ -89,7 +91,7 @@ func (ur *userRunner) start(ctx context.Context) error {
 						<-ur.runningCh
 					}()
 
-					if err := ur.runSearch(ctx); err != nil {
+					if err := ur.runSearch(ctx, true); err != nil {
 						log.Errorf("Search failed for user '%s': %v", ur.userConfig.Name, err)
 					}
 				}()
@@ -109,7 +111,8 @@ func (ur *userRunner) start(ctx context.Context) error {
 
 // runSearch performs a single search for all items for this user
 // Collects all found items before sending notifications
-func (ur *userRunner) runSearch(ctx context.Context) error {
+// If withHealthCheck is true, a random common item is also searched as a health check
+func (ur *userRunner) runSearch(ctx context.Context, withHealthCheck bool) error {
 	if len(ur.userConfig.Items) == 0 {
 		return fmt.Errorf("user '%s' has no items to search for", ur.userConfig.Name)
 	}
@@ -166,8 +169,28 @@ func (ur *userRunner) runSearch(ctx context.Context) error {
 		}
 	}
 
-	// Send heartbeat notification
-	if err := ur.notifier.NotifyHeartbeat(ctx); err != nil {
+	// Send heartbeat notification with optional health check search result
+	var healthCheckItem string
+	var healthCheckFound bool
+	if withHealthCheck {
+		healthCheckItem = search.RandomCommonItem(ur.commonItems)
+		healthCtx, healthCancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer healthCancel()
+
+		log.Infof("User '%s' running health check search for common item: %s", ur.userConfig.Name, healthCheckItem)
+		healthResults, err := ur.searcher.SearchItem(healthCtx, healthCheckItem, ur.userConfig.Zipcode, ur.userConfig.Distance)
+		if err != nil {
+			log.Warnf("Health check search failed for user '%s': %v", ur.userConfig.Name, err)
+		} else {
+			healthCheckFound = len(healthResults) > 0
+			if healthCheckFound {
+				healthCheckItem = healthResults[0].Name
+			}
+			log.Infof("User '%s' health check: searched for '%s', found %d results", ur.userConfig.Name, healthCheckItem, len(healthResults))
+		}
+	}
+
+	if err := ur.notifier.NotifyHeartbeat(ctx, healthCheckItem, healthCheckFound); err != nil {
 		log.Warnf("Failed to send heartbeat notification for user '%s': %v", ur.userConfig.Name, err)
 	}
 
@@ -182,7 +205,7 @@ func (ur *userRunner) stop() {
 
 // runOnce performs a single search and returns for this user (internal method)
 func (ur *userRunner) runOnce(ctx context.Context) error {
-	return ur.runSearch(ctx)
+	return ur.runSearch(ctx, false)
 }
 
 // SearchRunner manages search execution for one or more users
@@ -202,9 +225,19 @@ func NewRunner(cfg config.Config) (Runner, error) {
 
 	userRunners := make(map[string]*userRunner)
 
+	// Extract common item search strings from config (use code if set, otherwise name)
+	var commonItemSearches []string
+	for _, ci := range cfg.CommonItems {
+		if ci.Code != "" {
+			commonItemSearches = append(commonItemSearches, ci.Code)
+		} else if ci.Name != "" {
+			commonItemSearches = append(commonItemSearches, ci.Name)
+		}
+	}
+
 	// Create userRunner for each user
 	for _, userConfig := range cfg.Users {
-		userRunner, err := newUserRunner(userConfig, cfg.Interval, cfg.UserAgent)
+		userRunner, err := newUserRunner(userConfig, cfg.Interval, cfg.UserAgent, commonItemSearches)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create user runner for '%s': %w", userConfig.Name, err)
 		}

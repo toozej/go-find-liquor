@@ -59,6 +59,12 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// CommonItem represents a commonly available liquor item used for health check searches
+type CommonItem struct {
+	Code string `yaml:"code" json:"code"`
+	Name string `yaml:"name" json:"name"`
+}
+
 // NotificationConfig stores configuration for notification methods
 type NotificationConfig struct {
 	Type       string            `yaml:"type" json:"type"`
@@ -82,6 +88,9 @@ type Config struct {
 	Interval  time.Duration `yaml:"interval" json:"interval" env:"GFL_INTERVAL" envDefault:"12h"`
 	UserAgent string        `yaml:"user_agent" json:"user_agent" env:"GFL_USER_AGENT"`
 	Verbose   bool          `yaml:"verbose" json:"verbose" env:"GFL_VERBOSE" envDefault:"false"`
+
+	// Commonly available items used for health check searches
+	CommonItems []CommonItem `yaml:"common_items" json:"common_items"`
 
 	// User-specific configurations
 	Users []UserConfig `yaml:"users" json:"users"`

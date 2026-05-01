@@ -9,6 +9,19 @@ verbose: true  # Enable verbose logging (default: false)
 # If not set, will cycle through a list of common user agents
 # user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
+# Commonly available items used for health check searches
+# During periodic health checks, a random item from this list is searched
+# to verify the search service is functioning. The item code or name is
+# used for the search, and the item name is displayed in the heartbeat notification.
+# If not configured, built-in defaults will be used.
+common_items:
+  - code: "99900046075"  # Bacardi Superior Rum
+  - code: "99900014675"  # Jack Daniels #7 Whiskey
+  - code: "99900088075"  # Cazadores Reposado Tequila
+  - code: "99900054075"  # Bombay Sapphire Gin
+  - code: "99900202175"  # Jagermeister Liquer
+  - code: "99900069075"  # Absolut Vodka
+
 # Multi-user configuration
 # Each user can have their own items, location, and notification preferences
 users:

@@ -21,6 +21,30 @@ const (
 	ageBtnFormURL = "http://www.oregonliquorsearch.com/servlet/WelcomeController"
 )
 
+// DefaultCommonItems are items that are typically always in stock at OLCC stores,
+// used as fallback for health check searches when none are configured.
+var DefaultCommonItems = []string{
+	"99900046075",
+	"99900014675",
+	"99900088075",
+	"99900054075",
+	"99900202175",
+	"99900069075",
+}
+
+// RandomCommonItem returns a random item from the provided list.
+// If the list is empty, it falls back to DefaultCommonItems.
+func RandomCommonItem(items []string) string {
+	if len(items) == 0 {
+		items = DefaultCommonItems
+	}
+	n, err := rand.Int(rand.Reader, big.NewInt(int64(len(items))))
+	if err != nil {
+		return items[0]
+	}
+	return items[n.Int64()]
+}
+
 // User agent strings to cycle through
 var userAgents = []string{
 	"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
