@@ -28,6 +28,9 @@ LDFLAGS = -s -w \
 	
 # Define the repository URL
 REPO_URL := https://github.com/toozej/go-find-liquor
+IMAGE_AUTHOR = toozej
+IMAGE_NAME = go-find-liquor
+IMAGE_TAG = latest
 
 # Detect the OS and architecture
 OS := $(shell uname -s)
@@ -47,10 +50,10 @@ local-release-verify: local-release local-sign local-verify ## Release and verif
 pre-reqs: pre-commit-install ## Install pre-commit hooks and necessary binaries
 
 vet: ## Run `go vet` in Docker
-	docker build --target vet -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest . 
+	docker build --target vet -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) . 
 
 test: ## Run `go test` with race detection in Docker
-	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest .
+	docker build --progress=plain --target test -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) .
 
 e2e: ## Run end-to-end tests against live Oregon Liquor Search
 	go test -race -v -tags e2e $(CURDIR)/internal/search/
@@ -59,16 +62,17 @@ local-e2e: ## Run end-to-end tests against live Oregon Liquor Search using local
 	go test -race -v -tags e2e $(CURDIR)/internal/search/ 
 
 build: ## Build Docker image, including running tests
-	docker build -f $(CURDIR)/Dockerfile -t toozej/go-find-liquor:latest .
+	docker build -f $(CURDIR)/Dockerfile -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG) .
 
 get-cosign-pub-key: ## Get go-find-liquor Cosign public key from GitHub
 	test -f $(CURDIR)/go-find-liquor.pub || curl --silent https://raw.githubusercontent.com/toozej/go-find-liquor/main/go-find-liquor.pub -O
 
 verify: get-cosign-pub-key ## Verify Docker image with Cosign
-	cosign verify --key $(CURDIR)/go-find-liquor.pub toozej/go-find-liquor:latest
+	cosign verify --key $(CURDIR)/go-find-liquor.pub $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 run: ## Run built Docker image
-	docker run --rm --name go-find-liquor -v $(CURDIR)/config.yaml:/config.yaml:ro toozej/go-find-liquor:latest
+	-docker kill $(IMAGE_NAME)
+	docker run --rm --name $(IMAGE_NAME) -v $(CURDIR)/config.yaml:/config.yaml:ro $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 up: test build ## Run Docker Compose project with build Docker image
 	docker compose -f docker-compose.yml down --remove-orphans
@@ -95,6 +99,7 @@ local-update-deps: ## Run `go get -t -u ./...` to update Go module dependencies
 	go get -t -u ./...
 
 local-vet: ## Run `go vet` using locally installed golang toolchain
+	go fmt $(CURDIR)/...
 	go vet $(CURDIR)/...
 
 local-vendor: ## Run `go mod tidy & vendor` using locally installed golang toolchain
@@ -280,13 +285,16 @@ benchmark: ## Run benchmarks
 	@echo "Running benchmarks..."
 	go test -bench=. -benchmem $(CURDIR)/internal/search/
 
-clean: ## Clean up built Docker images and build artifacts
-	@echo "=== Cleaning up compiled binaries, profiles, and demo files ==="
+clean: ## Remove any locally compiled binaries, profiles, demo output, and built Docker image
+	@echo "=== Cleaning up compiled binaries, profiles, demo output, and built Docker image ==="
 	@rm -f $(CURDIR)/out/go-find-liquor
 	@rm -rf $(CURDIR)/profiles/
 	@rm -rf $(CURDIR)/dist/
-	@rm -rf $(CURDIR)/manpages/ $(CURDIR)/completions/
-	-docker image rm toozej/go-find-liquor:latest
+	@rm -rf $(CURDIR)/c.out
+	@rm -rf $(CURDIR)/manpages/
+	@rm -rf $(CURDIR)/completions/
+	@rm -rf $(CURDIR)/demo/
+	-docker image rm $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)
 
 help: ## Display help text
 	@grep -E '^[a-zA-Z0-9_-]+ ?:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
