@@ -212,13 +212,14 @@ sboms:
 
 signs:
   - cmd: cosign
+    stdin: '{{ .Env.COSIGN_PASSWORD }}'
     output: true
-    signature: "${artifact}.sigstore.json"
     args:
       - 'sign-blob'
-      - '--bundle=${signature}'
-      - '${artifact}'
+      - '--key=env://COSIGN_PRIVATE_KEY'
       - '--yes'
+      - '--output-signature=${signature}'
+      - '${artifact}'
     artifacts: all
 
 docker_signs:

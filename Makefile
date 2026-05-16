@@ -82,6 +82,12 @@ up: test build ## Run Docker Compose project with build Docker image
 down: ## Stop running Docker Compose project
 	docker compose -f docker-compose.yml down --remove-orphans
 
+distroless-build: ## Build Docker image using distroless as final base
+	docker build -f $(CURDIR)/Dockerfile.distroless -t $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)-distroless .
+
+distroless-run: ## Run built Docker image using distroless as final base
+	docker run --rm --name go-find-liquor -v $(CURDIR)/config:/config $(IMAGE_AUTHOR)/$(IMAGE_NAME):$(IMAGE_TAG)-distroless
+
 install: ## Install go-find-liquor from latest GitHub release
 	if command -v go; then \
 			go install github.com/toozej/go-find-liquor@latest ; \
