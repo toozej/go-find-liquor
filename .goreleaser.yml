@@ -40,7 +40,13 @@ builds:
     flags:
       - -trimpath
     ldflags:
-      - -s -w -X github.com/toozej/go-find-liquor/pkg/version.Version={{.Version}} -X github.com/toozej/go-find-liquor/pkg/version.Commit={{.Commit}} -X github.com/toozej/go-find-liquor/pkg/version.Branch={{.Branch}} -X github.com/toozej/go-find-liquor/pkg/version.BuiltAt={{.CommitDate}} -X github.com/toozej/go-find-liquor/pkg/version.Builder=goreleaser
+      - >-
+        -s -w
+        -X github.com/toozej/go-find-liquor/pkg/version.Version={{.Version}}
+        -X github.com/toozej/go-find-liquor/pkg/version.Commit={{.Commit}}
+        -X github.com/toozej/go-find-liquor/pkg/version.Branch={{.Branch}}
+        -X github.com/toozej/go-find-liquor/pkg/version.BuiltAt={{.CommitDate}}
+        -X github.com/toozej/go-find-liquor/pkg/version.Builder=goreleaser
     main: ./
     binary: go-find-liquor
 
@@ -223,11 +229,13 @@ signs:
 docker_signs:
   - cmd: cosign
     artifacts: all
+    stdin: '{{ .Env.COSIGN_PASSWORD }}'
     output: true
     args:
-      - "sign"
-      - "--yes"
-      - "${artifact}"
+      - 'sign'
+      - '--key=env://COSIGN_PRIVATE_KEY'
+      - '--yes'
+      - '${artifact}'
 
 milestones:
   - close: true
