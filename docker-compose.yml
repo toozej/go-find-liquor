@@ -9,5 +9,6 @@ services:
     volumes:
       - "./config.yaml:/config.yaml:ro"
     read_only: true
+    entrypoint: ["/go/bin/go-find-liquor", "--config", "/config.yaml"]
     labels:
       - "traefik.enable=false"

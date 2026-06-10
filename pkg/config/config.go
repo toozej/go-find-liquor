@@ -200,21 +200,27 @@ func loadYAMLConfig() (Config, error) {
 		return config, nil
 	}
 
-	// Get current working directory to establish root for secure file access
-	cwd, err := os.Getwd()
+	// Resolve config path to an absolute path for consistent handling
+	absConfigPath, err := filepath.Abs(configPath)
 	if err != nil {
-		return config, fmt.Errorf("failed to get current working directory: %w", err)
+		return config, fmt.Errorf("failed to resolve config file path: %w", err)
 	}
 
-	// Create a root filesystem scoped to current working directory
-	root, err := os.OpenRoot(cwd)
+	// The parent directory of the config file becomes the root for os.OpenRoot.
+	// os.OpenRoot.ReadFile requires paths relative to the root directory;
+	// absolute paths are rejected with "path escapes from parent".
+	configDir := filepath.Dir(absConfigPath)
+	configName := filepath.Base(absConfigPath)
+
+	// Create a root filesystem scoped to the config file's parent directory
+	root, err := os.OpenRoot(configDir)
 	if err != nil {
 		return config, fmt.Errorf("failed to create secure root filesystem: %w", err)
 	}
 	defer root.Close()
 
-	// Read and parse YAML file using scoped root
-	data, err := root.ReadFile(configPath)
+	// Read and parse YAML file using scoped root with relative path
+	data, err := root.ReadFile(configName)
 	if err != nil {
 		return config, fmt.Errorf("failed to read config file %s: %w", configPath, err)
 	}
