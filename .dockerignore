@@ -18,4 +18,3 @@ Makefile
 Dockerfile*
 docker-compose.yml
 go-find-liquor
-go-find-liquor.key

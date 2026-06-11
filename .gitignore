@@ -1,6 +1,4 @@
 # Cosign
-go-find-liquor.key
-cosign.key
 *.sig
 *.bundle
 
