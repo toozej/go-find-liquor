@@ -1,5 +1,10 @@
 # go-find-liquor (GFL)
 
+**This repository has moved to [monogo](https://github.com/toozej/monogo).**
+
+
+
+
 ![GitHub go.mod Go version](https://img.shields.io/github/go-mod/go-version/toozej/go-find-liquor)
 [![Go Report Card](https://goreportcard.com/badge/github.com/toozej/go-find-liquor)](https://goreportcard.com/report/github.com/toozej/go-find-liquor)
 ![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/toozej/go-find-liquor/cicd.yaml)
